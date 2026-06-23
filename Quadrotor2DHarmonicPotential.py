@@ -10,27 +10,26 @@ import pyvista
 
 
 class Quadrotor2DHarmonicPotential:
-    def __init__(self,c_goal=0.0,c_unsafe=1.0,f_val=0,num_triangles_x=50,num_triangles_y=50,safe_param=0.5) -> None:
-        
-        boundary_points = [-1,0,2,2]
-
+    def __init__(
+            self,
+            domain_corners,
+            unsafe_boxes,
+            target_box,
+            c_goal=0.0,
+            c_unsafe=1.0,
+            f_val=0,
+            num_triangles_x=50,
+            num_triangles_y=50
+        ):
         # Create the triangle mesh
         self.domain = mesh.create_rectangle(MPI.COMM_WORLD,
-                                    [(boundary_points[0],boundary_points[1]),(boundary_points[2],boundary_points[3])],
+                                    domain_corners,
                                     n=[num_triangles_x, num_triangles_y])
 
         V = FunctionSpace(self.domain, ("CG", 1))
         self.V = V
+
         print("Solving the variational problem...")
-
-        unsafe_domains = [[-1.0,0.0,2.0,0.25],
-                        [0.5,0.25,1.0,1.0],
-                        [-1.0,1.25,0.0,2.0]]
-
-        # unsafe_domains = []
-
-        safe_domains = [[-1.0,0.35,0.4,0.75]]
-
         bcs = []
 
         tdim = self.domain.topology.dim
@@ -48,18 +47,18 @@ class Quadrotor2DHarmonicPotential:
         bc_L = dirichletbc(u_L, boundary_dofs)
         bcs.append(bc_L)
 
-        for box in unsafe_domains:
-            dofs_box = locate_dofs_geometrical(V, lambda x: np.logical_and(np.logical_and(x[0] >= box[0],x[0] <= box[2]),
-                                                                        np.logical_and(x[1] >= box[1],x[1] <= box[3])))
+        for box in unsafe_boxes:
+            dofs_box = locate_dofs_geometrical(V, lambda x: np.logical_and(np.logical_and(x[0] >= box[0][0],x[0] <= box[1][0]),
+                                                                        np.logical_and(x[1] >= box[0][1],x[1] <= box[1][1])))
             u_unsafe = Function(V)
             u_unsafe.interpolate(lambda x: c_unsafe + 0*x[1])
 
             bc_unsafe = dirichletbc(u_unsafe, dofs_box)
             bcs.append(bc_unsafe)
 
-        for box in safe_domains:
-            dofs_box = locate_dofs_geometrical(V, lambda x: np.logical_and(np.logical_and(x[0] >= box[0],x[0] <= box[2]),
-                                                                        np.logical_and(x[1] >= box[1],x[1] <= box[3])))
+        for box in target_box:
+            dofs_box = locate_dofs_geometrical(V, lambda x: np.logical_and(np.logical_and(x[0] >= box[0][0],x[0] <= box[1][0]),
+                                                                        np.logical_and(x[1] >= box[0][1],x[1] <= box[1][1])))
             
             u_safe = Function(V)
             u_safe.interpolate(lambda x: c_goal + 0*x[1])
