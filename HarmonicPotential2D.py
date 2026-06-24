@@ -9,7 +9,7 @@ from dolfinx import geometry
 import pyvista
 
 
-class Quadrotor2DHarmonicPotential:
+class HarmonicPotential2D:
     def __init__(
             self,
             domain_corners,
